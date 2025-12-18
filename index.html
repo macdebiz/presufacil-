@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="es" id="html-root" class="transition-colors duration-300">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PresuFácil | Hybrid Edition</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        brand: ['Outfit', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Outfit:wght@400;500;700;800&display=swap');
+        
+        .card-pro { transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1); }
+        .card-pro:hover { transform: translateY(-4px); box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.15); }
+        .thin-border { border: 1px solid rgba(255, 255, 255, 0.15); }
+        
+        .fab-btn { transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); box-shadow: 0 10px 25px -5px rgba(16, 185, 129, 0.4); }
+        .fab-btn:hover { transform: scale(1.1) rotate(90deg); box-shadow: 0 15px 30px -5px rgba(16, 185, 129, 0.5); }
+
+        .envelope-option { transition: all 0.2s; border: 2px solid transparent; opacity: 0.7; filter: grayscale(0.5); }
+        .envelope-option:hover { opacity: 1; filter: grayscale(0); transform: translateY(-2px); }
+        .envelope-option.selected { border-color: currentColor; opacity: 1; filter: grayscale(0); transform: scale(1.05); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+
+        .hide-scroll::-webkit-scrollbar { display: none; }
+        .fade-in { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .view-section { display: none; }
+        .view-section.active { display: block; animation: fadeIn 0.4s ease-out; }
+
+        input[type="date"]::-webkit-calendar-picker-indicator { cursor: pointer; filter: invert(0.5); }
+        .dark input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); }
+        
+        .dropdown-menu { transform-origin: top right; transition: all 0.2s ease-out; }
+        .dropdown-menu.hidden { transform: scale(0.95); opacity: 0; pointer-events: none; }
+        .dropdown-menu.visible { transform: scale(1); opacity: 1; pointer-events: auto; }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen pb-20 text-slate-800 bg-[#F8FAFC] dark:bg-[#0f172a] dark:text-slate-200 transition-colors duration-300" onclick="closeMenuOutside(event)">
+
+    <nav class="bg-slate-900 text-white sticky top-0 z-40 shadow-xl border-b border-slate-800 backdrop-blur-md bg-slate-900/95">
+        <div class="max-w-7xl mx-auto px-4 h-20 flex justify-between items-center">
+            <div class="flex items-center gap-4 cursor-pointer group" onclick="switchView('dashboard')">
+                <div class="relative">
+                    <div class="absolute inset-0 bg-emerald-500 blur-lg opacity-20 rounded-full"></div>
+                    <div class="bg-gradient-to-br from-emerald-500 to-teal-600 p-2.5 rounded-xl shadow-lg relative border border-emerald-400/20 group-hover:scale-105 transition-transform">
+                        <i data-lucide="mail" class="text-white" size="22"></i>
+                    </div>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-black tracking-tight leading-none text-white brand-font">PresuFácil</h1>
+                    <span class="text-[8px] sm:text-[10px] text-emerald-400 uppercase tracking-[0.15em] font-bold block sm:inline">GESTIÓN FINANCIERA CON SOBRES</span>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-2">
+                <button onclick="toggleTheme()" class="p-2.5 rounded-xl bg-slate-800 border border-slate-700 hover:bg-slate-700 transition-colors text-yellow-400 shadow-sm" title="Cambiar Tema">
+                    <i id="theme-icon" data-lucide="sun" size="24"></i>
+                </button>
+                <div class="relative">
+                    <button id="menu-btn" onclick="toggleMenu(event)" class="p-2.5 rounded-xl bg-slate-800 border border-slate-700 hover:bg-slate-700 transition-colors text-emerald-400 shadow-sm">
+                        <i data-lucide="menu" size="24"></i>
+                    </button>
+                    <div id="nav-dropdown" class="dropdown-menu hidden absolute right-0 top-14 w-64 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-700 overflow-hidden z-50">
+                        <div class="p-2 space-y-1">
+                            <button onclick="switchView('dashboard')" class="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-emerald-600 dark:hover:text-emerald-400 rounded-xl transition-colors text-left">
+                                <i data-lucide="layout-grid" size="18"></i> Dashboard
+                            </button>
+                            <button onclick="switchView('reports')" class="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-blue-600 dark:hover:text-blue-400 rounded-xl transition-colors text-left">
+                                <i data-lucide="file-bar-chart-2" size="18"></i> Reportes PDF
+                            </button>
+                            <button onclick="switchView('guide')" class="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-xl transition-colors text-left">
+                                <i data-lucide="book-open" size="18"></i> Guía de Usuario
+                            </button>
+                            <button onclick="switchView('support')" class="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-purple-600 dark:hover:text-purple-400 rounded-xl transition-colors text-left">
+                                <i data-lucide="life-buoy" size="18"></i> Soporte Técnico
+                            </button>
+                            <button onclick="switchView('settings')" class="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white rounded-xl transition-colors text-left">
+                                <i data-lucide="settings-2" size="18"></i> Configuración
+                            </button>
+                        </div>
+                        <div class="h-px bg-slate-100 dark:bg-slate-700 mx-2"></div>
+                        <div class="p-2 text-center">
+                             <span class="text-[10px] font-bold uppercase text-slate-400 tracking-wider">v21.0 Hybrid Edition</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="flex-grow max-w-7xl mx-auto px-4 py-8 w-full">
+
+        <section id="view-dashboard" class="view-section active space-y-6">
+            <div class="bg-white dark:bg-slate-900 rounded-[2rem] p-6 shadow-sm border border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center relative min-h-[280px] transition-colors">
+                <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-0 mt-2">
+                    <span class="text-[10px] text-slate-400 uppercase font-bold tracking-widest mb-1">Patrimonio Neto</span>
+                    <span id="total-balance" class="text-3xl font-black text-slate-800 dark:text-white tracking-tighter brand-font transition-colors">$0.00</span>
+                    <span class="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-[9px] font-bold px-3 py-1 rounded-full mt-2 transition-colors">Disponible</span>
+                </div>
+                <div class="w-full h-[240px] relative z-10" style="min-height: 240px;"><canvas id="budgetChart"></canvas></div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                <div class="bg-gradient-to-b from-blue-600 to-blue-700 rounded-3xl p-4 shadow-xl text-white card-pro relative overflow-hidden group border border-blue-500/30">
+                    <div class="absolute -right-8 -top-8 bg-white/5 rounded-full p-10 blur-xl group-hover:scale-110 transition-transform"></div>
+                    <div class="relative z-10 flex flex-col h-full justify-between gap-3">
+                        <div class="flex justify-between items-center">
+                            <div class="flex items-center gap-2"><div class="p-2 bg-white/10 rounded-lg thin-border"><i data-lucide="wallet" size="18"></i></div><span class="text-[10px] font-bold uppercase tracking-wider text-blue-100">Fondo Operativo</span></div>
+                            <span class="bg-yellow-400 text-blue-900 text-xs font-black px-2.5 py-1 rounded-md shadow-lg shadow-yellow-400/20">50%</span>
+                        </div>
+                        <div><h3 class="text-2xl font-black brand-font tracking-tight" id="display-gastos">$0.00</h3></div>
+                        <div class="bg-blue-900/40 p-3 rounded-xl border border-blue-400/20 backdrop-blur-md"><p class="text-[11px] text-blue-50 leading-snug"><span class="text-blue-200 font-bold uppercase">Política de Uso:</span><br>Capital destinado exclusivamente a cubrir costos de vida ineludibles y mantenimiento.</p></div>
+                    </div>
+                </div>
+                <div class="bg-gradient-to-b from-purple-600 to-purple-700 rounded-3xl p-4 shadow-xl text-white card-pro relative overflow-hidden group border border-purple-500/30">
+                    <div class="absolute -right-8 -top-8 bg-white/5 rounded-full p-10 blur-xl group-hover:scale-110 transition-transform"></div>
+                    <div class="relative z-10 flex flex-col h-full justify-between gap-3">
+                        <div class="flex justify-between items-center">
+                            <div class="flex items-center gap-2"><div class="p-2 bg-white/10 rounded-lg thin-border"><i data-lucide="bar-chart-4" size="18"></i></div><span class="text-[10px] font-bold uppercase tracking-wider text-purple-100">Inversión</span></div>
+                            <span class="bg-yellow-400 text-purple-900 text-xs font-black px-2.5 py-1 rounded-md shadow-lg shadow-yellow-400/20">30%</span>
+                        </div>
+                        <div><h3 class="text-2xl font-black brand-font tracking-tight" id="display-inversion">$0.00</h3></div>
+                        <div class="bg-purple-900/40 p-3 rounded-xl border border-purple-400/20 backdrop-blur-md"><p class="text-[11px] text-purple-50 leading-snug"><span class="text-purple-200 font-bold uppercase">Política de Uso:</span><br>Recursos asignados para activos productivos y construcción de patrimonio.</p></div>
+                    </div>
+                </div>
+                <div class="bg-gradient-to-b from-emerald-600 to-emerald-700 rounded-3xl p-4 shadow-xl text-white card-pro relative overflow-hidden group border border-emerald-500/30">
+                    <div class="absolute -right-8 -top-8 bg-white/5 rounded-full p-10 blur-xl group-hover:scale-110 transition-transform"></div>
+                    <div class="relative z-10 flex flex-col h-full justify-between gap-3">
+                        <div class="flex justify-between items-center">
+                            <div class="flex items-center gap-2"><div class="p-2 bg-white/10 rounded-lg thin-border"><i data-lucide="vault" size="18"></i></div><span class="text-[10px] font-bold uppercase tracking-wider text-emerald-100">Ahorros</span></div>
+                            <span class="bg-yellow-400 text-emerald-900 text-xs font-black px-2.5 py-1 rounded-md shadow-lg shadow-yellow-400/20">20%</span>
+                        </div>
+                        <div><h3 class="text-2xl font-black brand-font tracking-tight" id="display-ahorro">$0.00</h3></div>
+                        <div class="bg-emerald-900/40 p-3 rounded-xl border border-emerald-400/20 backdrop-blur-md"><p class="text-[11px] text-emerald-50 leading-snug"><span class="text-emerald-200 font-bold uppercase">Política de Uso:</span><br>Fondo de blindaje para contingencias y amortiguador de volatilidad.</p></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800 flex flex-col h-[550px] transition-colors">
+                <div class="px-6 py-5 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row justify-between items-center gap-4 bg-slate-50/50 dark:bg-slate-800/50 rounded-t-3xl">
+                    <div class="flex items-center gap-4 w-full sm:w-auto">
+                        <div class="relative">
+                            <input type="date" id="date-filter" onchange="filterHistory('date')" class="pl-9 pr-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 focus:ring-2 focus:ring-emerald-500 outline-none shadow-sm cursor-pointer transition-colors">
+                            <i data-lucide="calendar" size="14" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
+                        </div>
+                        <h3 class="font-bold text-slate-700 dark:text-slate-200 text-sm uppercase tracking-wide flex items-center gap-2">Historial de Movimientos</h3>
+                    </div>
+                    <div class="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl w-full sm:w-auto">
+                        <button onclick="filterHistory('all')" id="filter-all" class="flex-1 sm:flex-none px-4 py-1.5 text-[10px] font-bold uppercase rounded-lg bg-white dark:bg-slate-700 shadow text-slate-900 dark:text-white transition-all">Todo</button>
+                        <button onclick="filterHistory('income')" id="filter-income" class="flex-1 sm:flex-none px-4 py-1.5 text-[10px] font-bold uppercase rounded-lg text-slate-500 dark:text-slate-400 hover:text-emerald-600 transition-all">Entrada</button>
+                        <button onclick="filterHistory('expense')" id="filter-expense" class="flex-1 sm:flex-none px-4 py-1.5 text-[10px] font-bold uppercase rounded-lg text-slate-500 dark:text-slate-400 hover:text-rose-600 transition-all">Salida</button>
+                    </div>
+                </div>
+                <div class="flex-1 overflow-y-auto p-4 space-y-3 hide-scroll" id="history-list"></div>
+                <div id="empty-state" class="hidden h-full flex flex-col items-center justify-center text-slate-300 dark:text-slate-600 gap-2"><i data-lucide="folder-open" size="32" class="opacity-40"></i><p class="text-xs font-semibold">Sin registros disponibles</p></div>
+            </div>
+        </section>
+
+        <section id="view-reports" class="view-section space-y-8 fade-in">
+            <div class="text-center max-w-2xl mx-auto mt-8 mb-10">
+                <h2 class="text-3xl font-black text-slate-800 dark:text-white brand-font mb-2">Reportes Ejecutivos</h2>
+                <p class="text-slate-500 dark:text-slate-400 text-sm">Generación de informes profesionales en formato PDF.</p>
+            </div>
+            <div class="max-w-md mx-auto bg-white dark:bg-slate-900 p-8 rounded-[2rem] shadow-xl border border-slate-200 dark:border-slate-800 text-center transition-colors">
+                <div class="bg-blue-50 dark:bg-blue-900/30 w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-6 text-blue-600 dark:text-blue-400">
+                    <i data-lucide="file-text" size="40"></i>
+                </div>
+                <h3 class="font-bold text-xl text-slate-800 dark:text-white mb-2">Informe Financiero Completo</h3>
+                <p class="text-xs text-slate-400 dark:text-slate-500 mb-8 px-4">Descarga un documento oficial con el estado de tus sobres y el desglose de transacciones.</p>
+                <button onclick="generatePDF()" class="w-full py-4 bg-slate-900 dark:bg-blue-600 text-white rounded-2xl font-bold text-sm hover:scale-[1.02] transition-transform shadow-lg flex items-center justify-center gap-2">
+                    <i data-lucide="download" size="18"></i> Descargar PDF
+                </button>
+            </div>
+        </section>
+
+        <section id="view-guide" class="view-section space-y-8 fade-in">
+            <div class="text-center max-w-2xl mx-auto mt-8 mb-10">
+                <h2 class="text-3xl font-black text-slate-800 dark:text-white brand-font mb-2">Guía de Usuario</h2>
+                <p class="text-slate-500 dark:text-slate-400 text-sm">Política de uso y metodología del sistema.</p>
+            </div>
+            <div class="max-w-3xl mx-auto space-y-6">
+                <div class="bg-white dark:bg-slate-900 p-8 rounded-[2rem] shadow-sm border border-slate-200 dark:border-slate-800 transition-colors">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="bg-emerald-100 dark:bg-emerald-900/50 p-2 rounded-lg text-emerald-600 dark:text-emerald-400"><i data-lucide="git-merge" size="24"></i></div>
+                        <h3 class="font-bold text-lg text-slate-800 dark:text-white">Lógica de Distribución Automática</h3>
+                    </div>
+                    <p class="text-sm text-slate-600 dark:text-slate-300 leading-relaxed mb-4">
+                        El sistema aplica automáticamente la regla presupuestaria <strong>50/30/20</strong> cada vez que registras un <strong>INGRESO</strong>. No necesitas calcular nada manualmente.
+                    </p>
+                    <ul class="space-y-3">
+                        <li class="flex items-start gap-3 text-sm text-slate-500 dark:text-slate-400"><span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs font-bold mt-0.5">50%</span> <span>Se asigna al <strong>Fondo Operativo</strong> para cubrir tus necesidades básicas y costos fijos.</span></li>
+                        <li class="flex items-start gap-3 text-sm text-slate-500 dark:text-slate-400"><span class="bg-purple-100 text-purple-700 px-2 py-0.5 rounded text-xs font-bold mt-0.5">30%</span> <span>Se dirige al <strong>Capital de Inversión</strong> para crecimiento patrimonial.</span></li>
+                        <li class="flex items-start gap-3 text-sm text-slate-500 dark:text-slate-400"><span class="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded text-xs font-bold mt-0.5">20%</span> <span>Se resguarda en <strong>Ahorros</strong> como fondo de seguridad.</span></li>
+                    </ul>
+                </div>
+                <div class="bg-white dark:bg-slate-900 p-8 rounded-[2rem] shadow-sm border border-slate-200 dark:border-slate-800 transition-colors">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="bg-indigo-100 dark:bg-indigo-900/50 p-2 rounded-lg text-indigo-600 dark:text-indigo-400"><i data-lucide="shield-alert" size="24"></i></div>
+                        <h3 class="font-bold text-lg text-slate-800 dark:text-white">Política de Uso del Software</h3>
+                    </div>
+                    <p class="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                        PresuFácil opera bajo un modelo de <strong>almacenamiento local seguro</strong>. Todos tus datos financieros residen exclusivamente en tu dispositivo. No utilizamos servidores en la nube para procesar tu información, garantizando máxima privacidad. Es responsabilidad del usuario generar copias de seguridad periódicas mediante la función de "Base de Datos" en el menú de Configuración.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <section id="view-support" class="view-section space-y-8 fade-in">
+            <div class="text-center max-w-2xl mx-auto mt-8 mb-10">
+                <h2 class="text-3xl font-black text-slate-800 dark:text-white brand-font mb-2">Soporte Técnico</h2>
+                <p class="text-slate-500 dark:text-slate-400 text-sm">Canales oficiales de asistencia y contacto.</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+                <div class="bg-white dark:bg-slate-900 p-8 rounded-[2rem] shadow-sm border border-slate-200 dark:border-slate-800 flex flex-col items-center text-center transition-colors">
+                    <div class="bg-orange-50 dark:bg-orange-900/30 w-16 h-16 rounded-2xl flex items-center justify-center text-orange-600 dark:text-orange-400 mb-4"><i data-lucide="mail" size="32"></i></div>
+                    <h3 class="font-bold text-lg text-slate-800 dark:text-white mb-1">Correo Electrónico</h3>
+                    <p class="text-xs text-slate-400 dark:text-slate-500 mb-6">Consultas generales y reportes de errores.</p>
+                    <a href="mailto:sanderalastero@gmail.com" class="text-sm font-bold text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800 px-6 py-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-orange-400 transition-colors">sanderalastero@gmail.com</a>
+                </div>
+                <div class="bg-white dark:bg-slate-900 p-8 rounded-[2rem] shadow-sm border border-slate-200 dark:border-slate-800 flex flex-col items-center text-center transition-colors">
+                    <div class="bg-blue-50 dark:bg-blue-900/30 w-16 h-16 rounded-2xl flex items-center justify-center text-blue-600 dark:text-blue-400 mb-4"><i data-lucide="facebook" size="32"></i></div>
+                    <h3 class="font-bold text-lg text-slate-800 dark:text-white mb-1">Facebook Oficial</h3>
+                    <p class="text-xs text-slate-400 dark:text-slate-500 mb-6">Comunicación directa y actualizaciones.</p>
+                    <a href="https://www.facebook.com/macde1412" target="_blank" class="w-full py-3 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 transition shadow-lg flex items-center justify-center gap-2">
+                        Visitar Perfil <i data-lucide="external-link" size="14"></i>
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <section id="view-settings" class="view-section space-y-8 fade-in">
+            <div class="text-center max-w-2xl mx-auto mt-8 mb-10">
+                <h2 class="text-3xl font-black text-slate-800 dark:text-white brand-font mb-2">Centro de Control</h2>
+                <p class="text-slate-500 dark:text-slate-400 text-sm">Administración de base de datos local y seguridad.</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+                <div class="bg-white dark:bg-slate-900 p-8 rounded-[2rem] shadow-sm border border-slate-200 dark:border-slate-800 flex flex-col items-center text-center transition-colors">
+                    <div class="bg-blue-50 dark:bg-blue-900/30 w-16 h-16 rounded-2xl flex items-center justify-center text-blue-600 dark:text-blue-400 mb-4"><i data-lucide="database" size="32"></i></div>
+                    <h3 class="font-bold text-lg text-slate-800 dark:text-white mb-1">Base de Datos</h3>
+                    <p class="text-xs text-slate-400 dark:text-slate-500 mb-6 px-4">Respalda tus sobres financieros en JSON.</p>
+                    <div class="w-full space-y-3">
+                        <button onclick="openSaveModal()" class="w-full py-3 bg-slate-900 dark:bg-slate-700 text-white rounded-xl font-bold text-sm hover:bg-slate-800 dark:hover:bg-slate-600 transition shadow-lg flex items-center justify-center gap-2"><i data-lucide="download-cloud" size="16"></i> Crear Copia de Seguridad</button>
+                        <label class="w-full py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-xl font-bold text-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition cursor-pointer flex items-center justify-center gap-2"><i data-lucide="upload-cloud" size="16"></i> Restaurar Archivo<input type="file" class="hidden" onchange="importData(this)"></label>
+                    </div>
+                </div>
+                <div class="bg-white dark:bg-slate-900 p-8 rounded-[2rem] shadow-sm border border-slate-200 dark:border-slate-800 flex flex-col items-center text-center relative overflow-hidden transition-colors">
+                    <div class="absolute top-0 left-0 w-full h-1 bg-rose-500"></div>
+                    <div class="bg-rose-50 dark:bg-rose-900/20 w-16 h-16 rounded-2xl flex items-center justify-center text-rose-500 mb-4"><i data-lucide="alert-octagon" size="32"></i></div>
+                    <h3 class="font-bold text-lg text-slate-800 dark:text-white mb-1">Zona de Reinicio</h3>
+                    <p class="text-xs text-slate-400 dark:text-slate-500 mb-6 px-4">Eliminación permanente de todos los registros.</p>
+                    <button onclick="resetApp()" class="w-full mt-auto py-3 bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-900 rounded-xl font-bold text-sm hover:bg-rose-500 hover:text-white transition shadow-sm flex items-center justify-center gap-2"><i data-lucide="trash-2" size="16"></i> Formatear Sistema</button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <button onclick="openTxModal()" class="fab-btn fixed bottom-8 right-6 w-16 h-16 bg-slate-900 dark:bg-emerald-500 text-white rounded-full flex items-center justify-center z-50 shadow-2xl"><i data-lucide="plus" size="32"></i></button>
+
+    <footer class="mt-auto pt-8 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-center transition-colors">
+        <div class="max-w-7xl mx-auto px-4 flex flex-col items-center gap-3">
+            <h4 class="font-bold text-slate-800 dark:text-white text-sm tracking-tight brand-font flex items-center gap-2">
+                <i data-lucide="layers" size="18" class="text-emerald-500"></i> Desarrollado por Alexander Macdebiz
+            </h4>
+            <p class="text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-1">
+                PresuFácil | SOFTWARE DE GESTIÓN FINANCIERA CON SOBRES
+            </p>
+            <div class="flex gap-4 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest justify-center">
+                <span id="year-copy">© 2024</span><span>•</span><span>v21.0 Hybrid Edition</span>
+            </div>
+        </div>
+    </footer>
+
+    <div id="tx-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <div class="bg-white dark:bg-slate-900 w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl animate-[fadeIn_0.3s_ease-out] relative border border-transparent dark:border-slate-800 transition-colors">
+            <button onclick="closeTxModal()" class="absolute top-4 right-4 p-2 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"><i data-lucide="x" size="20"></i></button>
+            <h3 class="text-xl font-black text-slate-800 dark:text-white mb-6 brand-font text-center">Registrar Movimiento</h3>
+            <div class="bg-slate-100 dark:bg-slate-800 p-1.5 rounded-xl flex mb-6 relative h-12">
+                <div id="switch-bg" class="absolute top-1.5 left-1.5 w-[calc(50%-6px)] h-[calc(100%-12px)] bg-slate-900 rounded-lg shadow-sm transition-all duration-300"></div>
+                <button onclick="setTxType('income')" id="btn-income" class="flex-1 z-10 text-xs font-bold uppercase tracking-wider transition-colors text-white rounded-lg">Ingreso</button>
+                <button onclick="setTxType('expense')" id="btn-expense" class="flex-1 z-10 text-xs font-bold uppercase tracking-wider transition-colors text-slate-500 rounded-lg">Egreso</button>
+            </div>
+            <form onsubmit="handleTransaction(event)" class="space-y-4">
+                <div><label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Monto ($)</label><input type="number" id="tx-amount" step="0.01" required placeholder="0.00" class="w-full p-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-black text-2xl text-slate-800 dark:text-white focus:bg-white dark:focus:bg-slate-900 focus:border-emerald-500 transition-all text-center"></div>
+                <div id="source-select-container" class="hidden fade-in">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2 text-center">Seleccionar Sobre</label>
+                    <input type="hidden" id="tx-source" value="">
+                    <div class="grid grid-cols-3 gap-2">
+                        <div onclick="selectEnvelope('gastos')" id="opt-gastos" class="envelope-option cursor-pointer bg-slate-50 dark:bg-slate-800 rounded-xl p-3 flex flex-col items-center gap-1 text-blue-600 hover:bg-blue-50 dark:hover:bg-slate-700"><i data-lucide="wallet" size="20"></i><span class="text-[9px] font-bold uppercase">Operativo</span></div>
+                        <div onclick="selectEnvelope('inversion')" id="opt-inversion" class="envelope-option cursor-pointer bg-slate-50 dark:bg-slate-800 rounded-xl p-3 flex flex-col items-center gap-1 text-purple-600 hover:bg-purple-50 dark:hover:bg-slate-700"><i data-lucide="bar-chart-4" size="20"></i><span class="text-[9px] font-bold uppercase">Inversión</span></div>
+                        <div onclick="selectEnvelope('ahorro')" id="opt-ahorro" class="envelope-option cursor-pointer bg-slate-50 dark:bg-slate-800 rounded-xl p-3 flex flex-col items-center gap-1 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-slate-700"><i data-lucide="vault" size="20"></i><span class="text-[9px] font-bold uppercase">Ahorros</span></div>
+                    </div>
+                </div>
+                <div><label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Concepto</label><input type="text" id="tx-desc" required placeholder="Descripción..." class="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-bold text-sm text-slate-700 dark:text-slate-300"></div>
+                <button type="submit" id="submit-btn" class="w-full bg-slate-900 dark:bg-emerald-600 text-white font-bold py-4 rounded-xl hover:scale-[1.02] active:scale-95 transition-all text-xs uppercase tracking-widest shadow-lg"><span id="btn-text">Ejecutar Distribución</span></button>
+            </form>
+        </div>
+    </div>
+
+    <div id="save-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[60] hidden flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-900 w-full max-w-sm rounded-2xl p-6 shadow-2xl animate-[fadeIn_0.2s_ease-out] border border-transparent dark:border-slate-800">
+            <h3 class="font-bold text-lg text-slate-800 dark:text-white mb-4 text-center brand-font">Destino de Seguridad</h3>
+            <div class="space-y-3">
+                <button onclick="downloadData('drive')" class="w-full py-4 border border-slate-200 dark:border-slate-700 rounded-xl flex items-center justify-center gap-3 hover:bg-blue-50 dark:hover:bg-slate-800 hover:border-blue-200 font-bold text-slate-600 dark:text-slate-300 text-sm transition group">
+                    <svg class="w-6 h-6 group-hover:scale-110 transition-transform" viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg"><path d="m6.6 66.85 25.3-43.8 25.3 43.8z" fill="#0066da"/><path d="m43.85 23.05h25.3l25.3 43.8h-25.3z" fill="#43d35c"/><path d="m87.3 66.85-12.65 21.9h-50.6l12.65-21.9z" fill="#00ac47"/><path d="M29.6 22.3L44 47 16.5 47 2.3 22.3z" fill="#EA4335"/><path d="M68 22.3L82.2 47 29.6 47 15.3 22.3z" fill="#FBBC04"/><path d="M15.3 22.3L29.6 47 44 22.3 29.6 -2.3z" fill="#34A853"/><path d="M15.3 22.3L29.6 -2.3 58.3 -2.3 44 22.3z" fill="#4285F4"/></svg>Google Drive
+                </button>
+                <button onclick="downloadData('local')" class="w-full py-4 border border-slate-200 dark:border-slate-700 rounded-xl flex items-center justify-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-800 font-bold text-slate-600 dark:text-slate-300 text-sm transition"><i data-lucide="hard-drive-download" size="20" class="text-slate-500"></i>Descarga Local</button>
+            </div>
+            <button onclick="document.getElementById('save-modal').classList.add('hidden')" class="w-full mt-4 text-xs font-bold text-slate-400 hover:text-slate-600">CANCELAR</button>
+        </div>
+    </div>
+
+    <div id="edit-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[60] hidden flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-900 w-full max-w-xs rounded-2xl p-6 shadow-xl animate-[fadeIn_0.2s_ease-out] border border-transparent dark:border-slate-800">
+            <h3 class="font-bold text-lg text-slate-800 dark:text-white mb-4 text-center">Editar</h3>
+            <form onsubmit="saveEdit(event)" class="space-y-3">
+                <input type="number" id="edit-amount" step="0.01" class="w-full p-3 bg-slate-50 dark:bg-slate-800 border rounded-lg font-bold outline-none dark:text-white dark:border-slate-700">
+                <input type="text" id="edit-desc" class="w-full p-3 bg-slate-50 dark:bg-slate-800 border rounded-lg text-sm outline-none dark:text-white dark:border-slate-700">
+                <div class="flex gap-2">
+                    <button type="button" onclick="closeEditModal()" class="flex-1 py-2 text-xs font-bold text-slate-500 bg-slate-100 dark:bg-slate-800 rounded-lg">CANCELAR</button>
+                    <button type="submit" class="flex-1 py-2 bg-slate-900 dark:bg-emerald-600 text-white text-xs font-bold rounded-lg">GUARDAR</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let state = { gastos: 0, inversion: 0, ahorro: 0, history: [] };
+        let currentTxType = 'income';
+        let currentFilter = 'all';
+        let currentDateFilter = '';
+        let budgetChart = null;
+        let editingId = null;
+        const formatter = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
+
+        function initApp() {
+            document.getElementById('year-copy').innerText = `© ${new Date().getFullYear()}`;
+            if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) { document.documentElement.classList.add('dark'); document.getElementById('theme-icon').setAttribute('data-lucide', 'moon'); } else { document.documentElement.classList.remove('dark'); document.getElementById('theme-icon').setAttribute('data-lucide', 'sun'); }
+            
+            const saved = localStorage.getItem('PresuFacilV21');
+            if (saved) state = JSON.parse(saved);
+            state.history.forEach(i => {if(!i.id) i.id = Date.now() + Math.random()});
+            lucide.createIcons(); updateUI(); initChart();
+        }
+        function saveData() { localStorage.setItem('PresuFacilV21', JSON.stringify(state)); updateUI(); }
+
+        function toggleTheme() { const html = document.documentElement; const icon = document.getElementById('theme-icon'); if (html.classList.contains('dark')) { html.classList.remove('dark'); localStorage.setItem('theme', 'light'); icon.setAttribute('data-lucide', 'sun'); } else { html.classList.add('dark'); localStorage.setItem('theme', 'dark'); icon.setAttribute('data-lucide', 'moon'); } lucide.createIcons(); }
+        function toggleMenu(e) { e.stopPropagation(); const menu = document.getElementById('nav-dropdown'); if(menu.classList.contains('hidden')){ menu.classList.remove('hidden'); setTimeout(()=>menu.classList.add('visible'), 10); } else { menu.classList.remove('visible'); setTimeout(()=>menu.classList.add('hidden'), 200); } }
+        function closeMenuOutside(e) { const menu = document.getElementById('nav-dropdown'); const btn = document.getElementById('menu-btn'); if (!menu.classList.contains('hidden') && !menu.contains(e.target) && !btn.contains(e.target)) { menu.classList.remove('visible'); setTimeout(()=>menu.classList.add('hidden'), 200); } }
+        function switchView(v) { document.querySelectorAll('.view-section').forEach(e => e.classList.remove('active')); document.getElementById(`view-${v}`).classList.add('active'); const menu = document.getElementById('nav-dropdown'); menu.classList.remove('visible'); setTimeout(()=>menu.classList.add('hidden'), 200); }
+
+        function openTxModal() { document.getElementById('tx-modal').classList.remove('hidden'); setTxType('income'); }
+        function closeTxModal() { document.getElementById('tx-modal').classList.add('hidden'); }
+        function updateUI() { const total = state.gastos + state.inversion + state.ahorro; document.getElementById('total-balance').innerText = formatter.format(total); document.getElementById('display-gastos').innerText = formatter.format(state.gastos); document.getElementById('display-inversion').innerText = formatter.format(state.inversion); document.getElementById('display-ahorro').innerText = formatter.format(state.ahorro); renderHistory(); updateChart(total); }
+        
+        function selectEnvelope(val) { document.getElementById('tx-source').value = val; ['gastos', 'inversion', 'ahorro'].forEach(opt => { const el = document.getElementById(`opt-${opt}`); if (opt === val) { el.classList.add('selected'); if(opt==='gastos')el.style.color='#2563eb'; if(opt==='inversion')el.style.color='#9333ea'; if(opt==='ahorro')el.style.color='#059669'; } else { el.classList.remove('selected'); el.style.color=''; } }); }
+        
+        function setTxType(type) {
+            currentTxType = type; const isInc = type === 'income';
+            document.getElementById('switch-bg').style.left = isInc ? '6px' : 'calc(50% + 6px)';
+            document.getElementById('switch-bg').className = `absolute top-1.5 left-1.5 w-[calc(50%-6px)] h-[calc(100%-12px)] rounded-lg shadow-sm transition-all duration-300 ${isInc ? 'bg-slate-900' : 'bg-rose-500'}`;
+            document.getElementById('btn-income').className = `flex-1 z-10 text-xs font-bold uppercase tracking-wider transition-colors rounded-lg ${isInc ? 'text-white' : 'text-slate-400'}`;
+            document.getElementById('btn-expense').className = `flex-1 z-10 text-xs font-bold uppercase tracking-wider transition-colors rounded-lg ${!isInc ? 'text-white' : 'text-slate-400'}`;
+            const selector = document.getElementById('source-select-container'); const btn = document.getElementById('submit-btn');
+            if (isInc) { selector.classList.add('hidden'); btn.className = "w-full bg-slate-900 dark:bg-emerald-600 text-white font-bold py-4 rounded-xl hover:scale-[1.02] active:scale-95 transition-all text-xs uppercase tracking-widest shadow-lg"; document.getElementById('btn-text').innerText = "Ejecutar Distribución"; } 
+            else { selector.classList.remove('hidden'); btn.className = "w-full bg-rose-500 text-white font-bold py-4 rounded-xl hover:scale-[1.02] active:scale-95 transition-all text-xs uppercase tracking-widest shadow-lg"; document.getElementById('btn-text').innerText = "Registrar Salida"; if(!document.getElementById('tx-source').value) selectEnvelope('gastos'); }
+        }
+
+        function handleTransaction(e) {
+            e.preventDefault(); const amtIn = document.getElementById('tx-amount'), descIn = document.getElementById('tx-desc'); const amt = parseFloat(amtIn.value); if(isNaN(amt) || amt<=0) return;
+            const today = new Date(); const isoDate = today.toISOString().split('T')[0];
+            const item = { id: Date.now(), date: today.toLocaleDateString(), isoDate: isoDate, desc: descIn.value, amount: amt, type: currentTxType };
+            if (currentTxType === 'income') { state.gastos += amt * 0.50; state.inversion += amt * 0.30; state.ahorro += amt * 0.20; item.label = 'Distribución 50/30/20'; } 
+            else { const f = document.getElementById('tx-source').value; if (!f) { alert("Selecciona un sobre"); return; } if (state[f] < amt) { alert("Fondos insuficientes"); return; } state[f] -= amt; const labels = { gastos: 'Fondo Operativo', inversion: 'Capital Inversión', ahorro: 'Fondo Ahorros' }; item.label = labels[f]; }
+            state.history.push(item); amtIn.value = ''; descIn.value = ''; closeTxModal(); saveData();
+        }
+
+        function filterHistory(t) { if(t === 'date') { currentDateFilter = document.getElementById('date-filter').value; } else { currentFilter = t; ['all','income','expense'].forEach(x => { document.getElementById(`filter-${x}`).className = x===t ? "flex-1 sm:flex-none px-4 py-1.5 text-[10px] font-bold uppercase rounded-lg bg-slate-900 dark:bg-slate-700 text-white shadow transition-all" : "flex-1 sm:flex-none px-4 py-1.5 text-[10px] font-bold uppercase rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-all"; }); } renderHistory(); }
+        
+        function renderHistory() {
+            const list = document.getElementById('history-list'); const empty = document.getElementById('empty-state'); list.innerHTML = '';
+            let filtered = state.history.slice().reverse();
+            if(currentFilter !== 'all') filtered = filtered.filter(i => i.type === currentFilter);
+            if(currentDateFilter) filtered = filtered.filter(i => { if(i.isoDate) return i.isoDate === currentDateFilter; return false; });
+            if(filtered.length === 0) { empty.classList.remove('hidden'); return; }
+            empty.classList.add('hidden');
+            filtered.forEach(item => {
+                const isInc = item.type === 'income';
+                const color = isInc ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400';
+                const icon = isInc ? 'arrow-up' : 'arrow-down'; 
+                const bgColor = isInc ? 'bg-emerald-100 dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-800' : 'bg-rose-100 dark:bg-rose-900/30 border-rose-200 dark:border-rose-800';
+                const textColor = isInc ? 'text-emerald-700 dark:text-emerald-200' : 'text-rose-700 dark:text-rose-200';
+                const iconColor = isInc ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400';
+                const el = document.createElement('div');
+                el.className = `flex justify-between items-center p-3 rounded-xl border ${bgColor} group transition-transform hover:scale-[1.01]`;
+                el.innerHTML = `<div class="flex items-center gap-3"><div class="p-2 rounded-lg bg-white/60 dark:bg-slate-800/50 shadow-sm ${iconColor}"><i data-lucide="${icon}" size="16"></i></div><div><p class="font-bold ${textColor} text-xs">${item.desc}</p><p class="text-[9px] font-bold opacity-70 uppercase tracking-wide ${textColor}">${item.label} • ${item.date}</p></div></div><div class="text-right"><p class="font-black ${textColor} text-sm">${isInc?'+':'-'}${formatter.format(item.amount)}</p><div class="flex gap-2 justify-end mt-1 opacity-0 group-hover:opacity-100 transition-opacity"><button onclick="openEdit(${item.id})" class="${iconColor} hover:scale-110"><i data-lucide="pencil" size="12"></i></button><button onclick="deleteTx(${item.id})" class="${iconColor} hover:scale-110"><i data-lucide="trash-2" size="12"></i></button></div></div>`;
+                list.appendChild(el);
+            });
+            lucide.createIcons();
+        }
+
+        function deleteTx(id){ if(!confirm("Eliminar?"))return; const i=state.history.findIndex(x=>x.id===id); if(i===-1)return; const item=state.history[i]; if(item.type==='income'){state.gastos-=item.amount*0.5;state.inversion-=item.amount*0.3;state.ahorro-=item.amount*0.2;}else{let k='gastos';if(item.label.includes('Inversión'))k='inversion';if(item.label.includes('Ahorros'))k='ahorro';state[k]+=item.amount;} state.history.splice(i,1); saveData();}
+        function openEdit(id){const i=state.history.find(x=>x.id===id);if(i){editingId=id;document.getElementById('edit-amount').value=i.amount;document.getElementById('edit-desc').value=i.desc;document.getElementById('edit-modal').classList.remove('hidden');}}
+        function closeEditModal(){document.getElementById('edit-modal').classList.add('hidden');}
+        function saveEdit(e){e.preventDefault(); deleteTx(editingId); document.getElementById('tx-amount').value=document.getElementById('edit-amount').value; document.getElementById('tx-desc').value=document.getElementById('edit-desc').value; closeEditModal(); handleTransaction(e);}
+        function openSaveModal(){document.getElementById('save-modal').classList.remove('hidden');}
+        function downloadData(t){const a=document.createElement('a');a.href="data:text/json;charset=utf-8,"+encodeURIComponent(JSON.stringify(state));a.download=`Backup_${new Date().toISOString().split('T')[0]}.json`;a.click();document.getElementById('save-modal').classList.add('hidden'); if(t==='drive'){window.open('https://drive.google.com/drive/my-drive', '_blank'); setTimeout(() => { alert("📥 ARCHIVO DESCARGADO\n\n1. Tu Google Drive se ha abierto en una nueva pestaña.\n2. Arrastra el archivo descargado dentro de esa pestaña para guardarlo en la nube."); }, 1000);}}
+        function importData(i){const r=new FileReader();r.onload=e=>{try{state=JSON.parse(e.target.result);saveData();alert('Restaurado');}catch{alert('Error');}};r.readAsText(i.files[0]);}
+        function resetApp(){if(confirm("¿Resetear?")) {localStorage.removeItem('PresuFacilV21');location.reload();}}
+
+        // GENERACIÓN DE PDF PROFESIONAL
+        function generatePDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            const primaryColor = [16, 185, 129];
+            const darkColor = [15, 23, 42];
+
+            // Header
+            doc.setFillColor(...darkColor);
+            doc.rect(0, 0, 210, 35, 'F');
+            
+            // Icono Sobre Vectorial
+            doc.setFillColor(16, 185, 129);
+            doc.roundedRect(14, 12, 12, 10, 1, 1, 'F');
+            doc.setDrawColor(255, 255, 255);
+            doc.setLineWidth(0.5);
+            doc.line(14, 12, 20, 18);
+            doc.line(26, 12, 20, 18);
+
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(22);
+            doc.setFont("helvetica", "bold");
+            doc.text("PresuFácil", 32, 20);
+            doc.setFontSize(10);
+            doc.setFont("helvetica", "normal");
+            doc.text("GESTIÓN FINANCIERA CON SOBRES", 32, 26);
+            doc.text(new Date().toLocaleDateString(), 180, 20, { align: 'right' });
+
+            doc.setTextColor(0, 0, 0);
+            doc.setFontSize(14);
+            doc.setFont("helvetica", "bold");
+            doc.text("Estado de Situación Financiera", 14, 50);
+
+            const total = state.gastos + state.inversion + state.ahorro;
+            const tableData = [
+                ['Fondo Operativo (50%)', formatter.format(state.gastos)],
+                ['Capital Inversión (30%)', formatter.format(state.inversion)],
+                ['Fondo de Ahorro (20%)', formatter.format(state.ahorro)],
+                ['TOTAL PATRIMONIO', formatter.format(total)]
+            ];
+
+            doc.autoTable({
+                startY: 55,
+                head: [['Sobre / Concepto', 'Saldo Disponible']],
+                body: tableData,
+                theme: 'striped',
+                headStyles: { fillColor: primaryColor },
+                styles: { fontSize: 12 }
+            });
+
+            doc.text("Historial de Transacciones Recientes", 14, doc.lastAutoTable.finalY + 15);
+            const historyData = state.history.slice().reverse().map(item => [item.date, item.desc, item.label, item.type === 'income' ? 'Ingreso' : 'Egreso', formatter.format(item.amount)]);
+
+            doc.autoTable({
+                startY: doc.lastAutoTable.finalY + 20,
+                head: [['Fecha', 'Descripción', 'Categoría', 'Tipo', 'Monto']],
+                body: historyData,
+                theme: 'grid',
+                headStyles: { fillColor: [71, 85, 105] },
+                styles: { fontSize: 9 }
+            });
+
+            const pageCount = doc.internal.getNumberOfPages();
+            for (let i = 1; i <= pageCount; i++) {
+                doc.setPage(i);
+                doc.setFontSize(8);
+                doc.setTextColor(150);
+                const pageHeight = doc.internal.pageSize.height;
+                doc.text('PresuFácil | SOFTWARE DE GESTIÓN FINANCIERA CON SOBRES', 105, pageHeight - 15, { align: 'center' });
+                doc.text(`© ${new Date().getFullYear()} v21.0 Hybrid Edition - Desarrollado por Alexander Macdebiz`, 105, pageHeight - 10, { align: 'center' });
+            }
+
+            doc.save('Reporte_Financiero_PresuFacil.pdf');
+        }
+
+        function initChart() {
+            const ctx = document.getElementById('budgetChart').getContext('2d');
+            budgetChart = new Chart(ctx, { type: 'doughnut', data: { labels: ['Operativo','Inversión','Ahorros'], datasets: [{ data:[0,0,0], backgroundColor: ['#2563eb', '#9333ea', '#10b981'], borderWidth:0, hoverOffset: 10 }] }, options: { responsive:true, maintainAspectRatio:false, cutout:'85%', plugins:{legend:{display:false}, tooltip:{enabled:false}} } });
+        }
+        function updateChart(total) { if(!budgetChart) return; budgetChart.data.datasets[0].data = total > 0 ? [state.gastos, state.inversion, state.ahorro] : [1,1,1]; budgetChart.data.datasets[0].backgroundColor = total > 0 ? ['#2563eb', '#9333ea', '#10b981'] : ['#f1f5f9','#f1f5f9','#f1f5f9']; budgetChart.update(); }
+
+        setTxType('income'); initApp(); switchView('dashboard');
+    </script>
+</body>
+</html>
